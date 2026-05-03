@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Child profile including progress and rewards",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "avatar": { "type": "string" },
+        "totalExp": { "type": "number" },
+        "level": { "type": "number" },
+        "badges": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "dailyStreak": { "type": "number" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["child", "parent"] }
+      },
+      "required": ["displayName", "totalExp", "level", "role"]
+    },
+    "QuizAttempt": {
+      "title": "Quiz Attempt",
+      "description": "Result of a single quiz session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "quizType": { "type": "string", "enum": ["math", "brain", "spelling", "vocabulary"] },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "quizType", "score", "totalQuestions", "timestamp"]
+    },
+    "CustomQuiz": {
+      "title": "Custom Quiz",
+      "description": "Parent-defined custom quiz",
+      "type": "object",
+      "properties": {
+        "parentId": { "type": "string" },
+        "title": { "type": "string" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "answer": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Child or Parent user profiles"
+    },
+    "/users/{userId}/attempts/{attemptId}": {
+      "schema": "QuizAttempt",
+      "description": "History of quizzes taken by the user"
+    },
+    "/quizzes/{quizId}": {
+      "schema": "CustomQuiz",
+      "description": "Custom quizzes created by parents"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // PILLAR 3: Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // PILLAR 2: Validation Blueprints
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'totalExp', 'level', 'role']) &&
+             data.keys().size() <= 12 && // Allow for optional fields
+             data.displayName is string && data.displayName.size() <= 50 &&
+             data.totalExp is number &&
+             data.level is number &&
+             data.role in ['child', 'parent'] &&
+             (data.get('photoURL', '') is string) &&
+             (data.get('avatar', '') is string);
+    }
+
+    function isValidAttempt(data) {
+      return data.keys().hasAll(['userId', 'quizType', 'score', 'totalQuestions', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.quizType in ['math', 'brain', 'spelling', 'vocabulary'] &&
+             data.score is number &&
+             data.totalQuestions is number;
+             // Temporarily slack on timestamp check if needed, but request.time is better
+    }
+
+    // PILLAR 1 & 4: Resource match blocks
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Profiles are private
+      
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        // Only allow certain field updates if it's not a fundamental role change
+        incoming().role == existing().role &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'avatar', 'totalExp', 'level', 'badges', 'dailyStreak', 'lastActive'])
+      );
+    }
+
+    match /users/{userId}/attempts/{attemptId} {
+      allow list, get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidAttempt(incoming());
+      allow update, delete: if false; // History is immutable
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn(); // Everyone can take quizzes
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+      allow update, delete: if isSignedIn() && existing().parentId == request.auth.uid;
+    }
+  }
+}
