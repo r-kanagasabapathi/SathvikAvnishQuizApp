@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, CheckCircle2, AlertCircle, ChevronRight, Loader2, Sparkles, Heart } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, ChevronRight, Loader2, Sparkles, Heart, Trophy } from 'lucide-react';
 import { generateQuiz, QuizQuestion } from '../services/geminiService';
 import { db, auth } from '../lib/firebase';
 import { collection, addDoc, doc, updateDoc, increment, getDoc } from 'firebase/firestore';
@@ -21,15 +21,31 @@ export function QuizView({ type, onClose, onComplete }: QuizViewProps) {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [lives, setLives] = useState(3);
   const [finished, setFinished] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
 
   useEffect(() => {
     async function loadQuiz() {
-      const q = await generateQuiz(type, 'easy'); // Default to easy for now
+      const q = await generateQuiz(type, 'easy');
       setQuestions(q);
       setLoading(false);
     }
     loadQuiz();
   }, [type]);
+
+  useEffect(() => {
+    if (loading || finished || selectedOption || lives === 0) return;
+
+    if (timeLeft === 0) {
+      handleOptionClick('TIMEOUT_EXPIRED'); // Force move
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, loading, finished, selectedOption, lives]);
 
   const handleOptionClick = (option: string) => {
     if (selectedOption || finished) return;
@@ -48,8 +64,8 @@ export function QuizView({ type, onClose, onComplete }: QuizViewProps) {
       setCurrentIndex(c => c + 1);
       setSelectedOption(null);
       setIsCorrect(null);
+      setTimeLeft(30);
     } else {
-      // Finish quiz
       setFinished(true);
       await saveResults();
     }
@@ -137,6 +153,9 @@ export function QuizView({ type, onClose, onComplete }: QuizViewProps) {
           <X size={20} />
         </button>
         <div className="flex gap-2">
+          <div className={`w-12 h-12 brutal-border rounded-xl flex items-center justify-center font-black text-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${timeLeft <= 5 ? 'bg-brand-red text-white animate-pulse' : 'bg-brand-yellow text-brand-dark'}`}>
+            {timeLeft}
+          </div>
           {[...Array(3)].map((_, i) => (
             <motion.div
               key={i}

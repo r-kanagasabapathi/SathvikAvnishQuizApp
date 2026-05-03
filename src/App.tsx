@@ -110,8 +110,8 @@ export default function App() {
             <Brain size={32} className="text-white" />
           </div>
           <div>
-            <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-none">Brain Blasters!</h1>
-            <p className="text-lg font-bold text-slate-800">Welcome back, Super {profile?.displayName?.split(' ')[0]}!</p>
+            <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-none text-brand-dark">Brain Blasters!</h1>
+            <p className="text-lg font-black text-brand-red italic">Welcome Sathvik Avnish!</p>
           </div>
         </div>
 
